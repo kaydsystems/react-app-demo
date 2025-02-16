@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM ubuntu:latest
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --production

@@ -1,0 +1,60 @@
+name: Build, Push Docker Image & Update Deployment Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-update:
+    runs-on: ubuntu-latest
+
+    env:
+      ECR_REGISTRY: "491085404741.dkr.ecr.us-west-2.amazonaws.com/my-app"
+      DEPLOYMENT_REPO: "git@github.com:kaydsystems/deployment-repo.git"
+
+    steps:
+      # Checkout the application code
+      - name: Checkout Application Code
+        uses: actions/checkout@v4
+
+      # Generate a random IMAGE_TAG
+      - name: Generate Random Image Tag
+        run: |
+          IMAGE_TAG=$(date +'%Y%m%d%H%M%S')-$(openssl rand -hex 4)
+          echo "Generated IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      # Authenticate with AWS ECR (if needed)
+      - name: Authenticate Docker to AWS ECR
+        run: |
+          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      # Build and push Docker image
+      - name: Build and Push Docker Image
+        run: |
+          echo "Building Docker image with tag: $IMAGE_TAG"
+          docker build -t $ECR_REGISTRY:$IMAGE_TAG .
+          echo "Pushing Docker image to ECR..."
+          docker push $ECR_REGISTRY:$IMAGE_TAG
+          echo "Image pushed with tag: $IMAGE_TAG"
+
+      # Clone Deployment Repo
+      - name: Clone Deployment Repo
+        run: |
+          git clone $DEPLOYMENT_REPO deployment-repo
+
+      # Update Helm Chart Image Tag
+      - name: Update Helm Chart Image Tag
+        run: |
+          sed -i "s|tag:.*|tag: \"${IMAGE_TAG}\"|" ./deployment-repo/helm/values.yaml
+
+      # Configure Git & Commit Changes
+      - name: Commit and Push Changes to Deployment Repo
+        run: |
+          cd deployment-repo
+          git config --local user.name "ks-github-user"
+          git config --local user.email "kaydsystems7@gmail.com"
+          git add ./helm/values.yaml
+          git commit -m "Update image tag to ${IMAGE_TAG}"
+          git push origin main
