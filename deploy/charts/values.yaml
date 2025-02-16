@@ -1,5 +1,5 @@
 image:
-  repository: 123456789012.dkr.ecr.us-west-2.amazonaws.com/my-app
+  repository: 491085404741.dkr.ecr.us-east-2.amazonaws.com/my-app
   tag: latest
 
 replicaCount: 2
@@ -10,4 +10,4 @@ service:
 
 ingress:
   enabled: true
-  host: hello-world.example.com
+  host: hello-world.kaydsystems.org
